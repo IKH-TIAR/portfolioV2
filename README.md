@@ -44,10 +44,35 @@ go run ./cmd/api                       # start API on :8080
 
 Key endpoints:
 
-- `GET  /api/health`       — liveness + DB ping
-- `POST /api/auth/login`   — admin login → JWT
-- `POST /api/auth/logout`  — invalidates session
-- `GET  /api/auth/me`      — current admin (auth-guarded)
+Public:
+
+- `GET  /api/health`            — liveness + DB ping
+- `POST /api/auth/login`        — admin login → JWT
+- `POST /api/auth/logout`       — invalidates session (auth)
+- `GET  /api/auth/me`           — current admin (auth)
+- `GET  /api/site`              — site settings (hero, about, ...)
+- `GET  /api/projects`          — published projects
+- `GET  /api/projects/{slug}`   — single published project
+- `GET  /api/posts`             — published posts (`?limit=&offset=`)
+- `GET  /api/posts/{slug}`      — single published post
+- `GET  /api/posts/{slug}/comments` — comments on a post
+- `POST /api/posts/{slug}/comments` — post a comment
+- `GET  /api/photos`            — published photos
+- `POST /api/contact`           — contact form (stores message, emails you if Resend configured)
+
+Admin (all auth-guarded):
+
+- `GET/POST    /api/admin/projects`         — list/create
+- `GET/PUT/DELETE /api/admin/projects/{id}` — read/update/delete
+- `GET/POST    /api/admin/posts`            — list/create
+- `GET/PUT/DELETE /api/admin/posts/{id}`    — read/update/delete
+- `GET/POST    /api/admin/photos`           — list/create
+- `GET/PUT/DELETE /api/admin/photos/{id}`   — read/update/delete
+- `GET         /api/admin/site-settings`    — list all settings
+- `PUT         /api/admin/site-settings/{key}` — upsert one setting
+- `DELETE      /api/admin/comments/{id}`    — remove a comment
+- `GET/DELETE  /api/admin/messages`         — read/delete contact messages
+- `POST        /api/admin/uploads`          — multipart image upload → Supabase
 
 ### Frontend
 
@@ -71,3 +96,8 @@ npm run dev
 | `ADMIN_EMAIL`     | yes      | Admin account email (seeded on boot)     |
 | `ADMIN_PASSWORD`  | yes      | Admin account password (seeded on boot)  |
 | `ALLOWED_ORIGINS` | no       | Comma-separated CORS origins             |
+| `SUPABASE_URL`    | no       | Enables image uploads (Supabase Storage) |
+| `SUPABASE_SERVICE_ROLE_KEY` | no | Service role key for uploads        |
+| `SUPABASE_BUCKET` | no       | Storage bucket name                      |
+| `RESEND_API_KEY`  | no       | Enables contact-form emails (Resend)     |
+| `CONTACT_FROM_EMAIL` | no    | Sender for contact emails                |

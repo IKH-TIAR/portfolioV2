@@ -32,7 +32,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := s.users.FindUserByEmail(r.Context(), req.Email)
+	user, err := s.store.FindUserByEmail(r.Context(), req.Email)
 	if errors.Is(err, store.ErrNotFound) || (err == nil && !auth.VerifyPassword(user.PasswordHash, req.Password)) {
 		writeError(w, http.StatusUnauthorized, "invalid email or password")
 		return

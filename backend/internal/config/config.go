@@ -9,24 +9,34 @@ import (
 )
 
 type Config struct {
-	Port           string
-	DatabaseURL    string
-	JWTSecret      string
-	JWTMaxAge      time.Duration
-	AdminEmail     string
-	AdminPassword  string
-	AllowedOrigins []string
+	Port                   string
+	DatabaseURL            string
+	JWTSecret              string
+	JWTMaxAge              time.Duration
+	AdminEmail             string
+	AdminPassword          string
+	AllowedOrigins         []string
+	SupabaseURL            string
+	SupabaseServiceRoleKey string
+	SupabaseBucket         string
+	ResendAPIKey           string
+	ContactFromEmail       string
 }
 
 func Load() (*Config, error) {
 	cfg := &Config{
-		Port:           getenv("PORT", "8080"),
-		DatabaseURL:    os.Getenv("DATABASE_URL"),
-		JWTSecret:      os.Getenv("JWT_SECRET"),
-		JWTMaxAge:      parseDuration(getenv("JWT_TTL", "24h")),
-		AdminEmail:     os.Getenv("ADMIN_EMAIL"),
-		AdminPassword:  os.Getenv("ADMIN_PASSWORD"),
-		AllowedOrigins: splitList(os.Getenv("ALLOWED_ORIGINS")),
+		Port:                   getenv("PORT", "8080"),
+		DatabaseURL:            os.Getenv("DATABASE_URL"),
+		JWTSecret:              os.Getenv("JWT_SECRET"),
+		JWTMaxAge:              parseDuration(getenv("JWT_TTL", "24h")),
+		AdminEmail:             os.Getenv("ADMIN_EMAIL"),
+		AdminPassword:          os.Getenv("ADMIN_PASSWORD"),
+		AllowedOrigins:         splitList(os.Getenv("ALLOWED_ORIGINS")),
+		SupabaseURL:            os.Getenv("SUPABASE_URL"),
+		SupabaseServiceRoleKey: os.Getenv("SUPABASE_SERVICE_ROLE_KEY"),
+		SupabaseBucket:         os.Getenv("SUPABASE_BUCKET"),
+		ResendAPIKey:           os.Getenv("RESEND_API_KEY"),
+		ContactFromEmail:       getenv("CONTACT_FROM_EMAIL", "Portfolio <onboarding@resend.dev>"),
 	}
 
 	var missing []string

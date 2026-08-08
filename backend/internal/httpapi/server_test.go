@@ -15,12 +15,14 @@ import (
 	"github.com/ikhtiar/portfolio-backend/internal/store"
 )
 
-type fakeUsers struct {
-	user *store.User
-	err  error
+type fakeStore struct {
+	*store.Store
+	user  *store.User
+	err   error
+	posts map[string]*store.Post
 }
 
-func (f *fakeUsers) FindUserByEmail(ctx context.Context, email string) (*store.User, error) {
+func (f *fakeStore) FindUserByEmail(ctx context.Context, email string) (*store.User, error) {
 	if f.err != nil {
 		return nil, f.err
 	}
@@ -28,6 +30,25 @@ func (f *fakeUsers) FindUserByEmail(ctx context.Context, email string) (*store.U
 		return nil, store.ErrNotFound
 	}
 	return f.user, nil
+}
+
+func (f *fakeStore) GetPostBySlug(ctx context.Context, slug string, publishedOnly bool) (*store.Post, error) {
+	if p, ok := f.posts[slug]; ok && (!publishedOnly || p.Published) {
+		return p, nil
+	}
+	return nil, store.ErrNotFound
+}
+
+func (f *fakeStore) CreateComment(ctx context.Context, postID int64, author, body string) (*store.Comment, error) {
+	return &store.Comment{ID: 1, PostID: postID, Author: author, Body: body, CreatedAt: time.Now()}, nil
+}
+
+func (f *fakeStore) ListCommentsByPost(ctx context.Context, postID int64) ([]store.Comment, error) {
+	return nil, nil
+}
+
+func (f *fakeStore) CreateMessage(ctx context.Context, name, email, body string) (*store.Message, error) {
+	return &store.Message{ID: 1, Name: name, Email: email, Body: body, CreatedAt: time.Now()}, nil
 }
 
 type fakePinger struct {
@@ -38,24 +59,36 @@ func (f *fakePinger) Ping(ctx context.Context) error {
 	return f.err
 }
 
-func newTestServer(t *testing.T, users *fakeUsers, pinger *fakePinger) *Server {
+type fakeMailer struct {
+	sent int
+}
+
+func (f *fakeMailer) Send(ctx context.Context, to, subject, html string) error {
+	f.sent++
+	return nil
+}
+
+func newTestServer(t *testing.T, st *fakeStore, pinger *fakePinger) *Server {
 	t.Helper()
 	logger := slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))
 	hash, err := auth.HashPassword("correct-password")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if users.user == nil {
-		users.user = &store.User{ID: 1, Email: "admin@test.dev", PasswordHash: hash}
+	if st.user == nil {
+		st.user = &store.User{ID: 1, Email: "admin@test.dev", PasswordHash: hash}
 	}
 	tokens := auth.NewTokenService("test-secret-that-is-long-enough", time.Hour)
 	return New(Options{
-		Logger:  logger,
-		Users:   users,
-		Tokens:  tokens,
-		Pinger:  pinger,
-		Limiter: NewTokenBucketLimiter(),
-		Origins: []string{"http://localhost:3000"},
+		Logger:         logger,
+		Store:          st,
+		Tokens:         tokens,
+		Pinger:         pinger,
+		Limiter:        NewTokenBucketLimiter(),
+		ContactLimiter: NewTokenBucketLimiterWith(5, 1.0/6.0),
+		Mailer:         &fakeMailer{},
+		AdminEmail:     "admin@test.dev",
+		Origins:        []string{"http://localhost:3000"},
 	})
 }
 
@@ -78,7 +111,7 @@ func doRequest(t *testing.T, s *Server, method, path, body string, token string)
 }
 
 func TestHealthOK(t *testing.T) {
-	s := newTestServer(t, &fakeUsers{}, &fakePinger{})
+	s := newTestServer(t, &fakeStore{}, &fakePinger{})
 	rec := doRequest(t, s, http.MethodGet, "/api/health", "", "")
 
 	if rec.Code != http.StatusOK {
@@ -94,7 +127,7 @@ func TestHealthOK(t *testing.T) {
 }
 
 func TestHealthDegraded(t *testing.T) {
-	s := newTestServer(t, &fakeUsers{}, &fakePinger{err: errors.New("db down")})
+	s := newTestServer(t, &fakeStore{}, &fakePinger{err: errors.New("db down")})
 	rec := doRequest(t, s, http.MethodGet, "/api/health", "", "")
 
 	if rec.Code != http.StatusServiceUnavailable {
@@ -103,7 +136,7 @@ func TestHealthDegraded(t *testing.T) {
 }
 
 func TestLoginSuccess(t *testing.T) {
-	s := newTestServer(t, &fakeUsers{}, &fakePinger{})
+	s := newTestServer(t, &fakeStore{}, &fakePinger{})
 	rec := doRequest(t, s, http.MethodPost, "/api/auth/login",
 		`{"email":"admin@test.dev","password":"correct-password"}`, "")
 
@@ -129,7 +162,7 @@ func TestLoginSuccess(t *testing.T) {
 }
 
 func TestLoginWrongPassword(t *testing.T) {
-	s := newTestServer(t, &fakeUsers{}, &fakePinger{})
+	s := newTestServer(t, &fakeStore{}, &fakePinger{})
 	rec := doRequest(t, s, http.MethodPost, "/api/auth/login",
 		`{"email":"admin@test.dev","password":"wrong"}`, "")
 
@@ -139,7 +172,7 @@ func TestLoginWrongPassword(t *testing.T) {
 }
 
 func TestLoginUnknownUser(t *testing.T) {
-	s := newTestServer(t, &fakeUsers{}, &fakePinger{})
+	s := newTestServer(t, &fakeStore{}, &fakePinger{})
 	rec := doRequest(t, s, http.MethodPost, "/api/auth/login",
 		`{"email":"nobody@test.dev","password":"whatever123"}`, "")
 
@@ -149,7 +182,7 @@ func TestLoginUnknownUser(t *testing.T) {
 }
 
 func TestLoginBadRequest(t *testing.T) {
-	s := newTestServer(t, &fakeUsers{}, &fakePinger{})
+	s := newTestServer(t, &fakeStore{}, &fakePinger{})
 	rec := doRequest(t, s, http.MethodPost, "/api/auth/login", `{"email":""}`, "")
 
 	if rec.Code != http.StatusBadRequest {
@@ -158,7 +191,7 @@ func TestLoginBadRequest(t *testing.T) {
 }
 
 func TestMeRequiresAuth(t *testing.T) {
-	s := newTestServer(t, &fakeUsers{}, &fakePinger{})
+	s := newTestServer(t, &fakeStore{}, &fakePinger{})
 	rec := doRequest(t, s, http.MethodGet, "/api/auth/me", "", "")
 
 	if rec.Code != http.StatusUnauthorized {
@@ -167,7 +200,7 @@ func TestMeRequiresAuth(t *testing.T) {
 }
 
 func TestMeWithToken(t *testing.T) {
-	s := newTestServer(t, &fakeUsers{}, &fakePinger{})
+	s := newTestServer(t, &fakeStore{}, &fakePinger{})
 	token, err := s.tokens.Issue(1, "admin@test.dev")
 	if err != nil {
 		t.Fatal(err)
@@ -187,7 +220,7 @@ func TestMeWithToken(t *testing.T) {
 }
 
 func TestMeWithInvalidToken(t *testing.T) {
-	s := newTestServer(t, &fakeUsers{}, &fakePinger{})
+	s := newTestServer(t, &fakeStore{}, &fakePinger{})
 	rec := doRequest(t, s, http.MethodGet, "/api/auth/me", "", "not-a-real-token")
 
 	if rec.Code != http.StatusUnauthorized {
@@ -196,7 +229,7 @@ func TestMeWithInvalidToken(t *testing.T) {
 }
 
 func TestLoginRateLimit(t *testing.T) {
-	s := newTestServer(t, &fakeUsers{}, &fakePinger{})
+	s := newTestServer(t, &fakeStore{}, &fakePinger{})
 	for i := 0; i < 5; i++ {
 		rec := doRequest(t, s, http.MethodPost, "/api/auth/login",
 			`{"email":"admin@test.dev","password":"wrong"}`, "")
@@ -212,7 +245,7 @@ func TestLoginRateLimit(t *testing.T) {
 }
 
 func TestCORSPreflight(t *testing.T) {
-	s := newTestServer(t, &fakeUsers{}, &fakePinger{})
+	s := newTestServer(t, &fakeStore{}, &fakePinger{})
 	req := httptest.NewRequest(http.MethodOptions, "/api/health", nil)
 	req.Header.Set("Origin", "http://localhost:3000")
 	req.Header.Set("Access-Control-Request-Method", "GET")
@@ -228,7 +261,7 @@ func TestCORSPreflight(t *testing.T) {
 }
 
 func TestCORSBlocksUnknownOrigin(t *testing.T) {
-	s := newTestServer(t, &fakeUsers{}, &fakePinger{})
+	s := newTestServer(t, &fakeStore{}, &fakePinger{})
 	req := httptest.NewRequest(http.MethodOptions, "/api/health", nil)
 	req.Header.Set("Origin", "http://evil.example")
 	rec := httptest.NewRecorder()

@@ -33,6 +33,15 @@ func NewTokenBucketLimiter() *tokenBucketLimiter {
 	}
 }
 
+func NewTokenBucketLimiterWith(capacity, refillPerSecond float64) *tokenBucketLimiter {
+	return &tokenBucketLimiter{
+		limit: capacity,
+		rate:  refillPerSecond,
+		now:   time.Now,
+		keys:  make(map[string]*tokenBucket),
+	}
+}
+
 func (l *tokenBucketLimiter) Allow(key string) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
