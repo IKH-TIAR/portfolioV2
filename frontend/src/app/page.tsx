@@ -1,69 +1,195 @@
-import Image from "next/image";
+import Link from "next/link";
+import {
+  getPhotos,
+  getPosts,
+  getProjects,
+  getSite,
+} from "@/lib/api";
+import JournalList from "@/components/JournalList";
+import PhotoStrip from "@/components/PhotoStrip";
+import ProjectCard from "@/components/ProjectCard";
+import SectionHeading from "@/components/SectionHeading";
+import ContactForm from "@/components/ContactForm";
 
-export default function Home() {
+const stack = [
+  "python",
+  "langchain",
+  "langgraph",
+  "n8n",
+  "fastapi",
+  "go",
+  "postgres",
+  "next.js",
+];
+
+export default async function Home() {
+  const [projects, posts, photos, site] = await Promise.all([
+    getProjects(),
+    getPosts(3),
+    getPhotos(),
+    getSite(),
+  ]);
+  const featured = projects.filter((p) => p.featured).slice(0, 3);
+  const heroTitle = site.hero?.title ?? "Ikhtiar";
+  const heroTagline =
+    site.hero?.tagline ??
+    "What I cannot build, I do not understand.";
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
+    <>
+      <section className="border-b border-line">
+        <div className="mx-auto w-full max-w-5xl px-5 pb-20 pt-16 sm:px-8 sm:pb-28 sm:pt-24">
+          <p className="font-mono text-sm text-moss">~/whoami</p>
+          <h1 className="mt-4 max-w-3xl font-serif text-5xl leading-[1.05] text-ink sm:text-7xl">
+            {heroTitle}
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted">
+            {heroTagline}
+          </p>
+          <p className="mt-8 inline-flex items-center gap-2 rounded-full border border-line bg-paper-deep/60 px-4 py-2 font-mono text-sm text-ink-soft">
+            <span aria-hidden="true" className="h-2 w-2 rounded-full bg-moss" />
+            currently: jr ai developer · learning go
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </section>
+
+      <section className="border-b border-line">
+        <div className="mx-auto w-full max-w-5xl px-5 py-20 sm:px-8">
+          <SectionHeading path="~/projects" title="Featured work">
+            <Link
+              href="/projects"
+              className="font-mono text-sm text-moss-dark underline underline-offset-3 hover:text-moss"
+            >
+              all projects →
+            </Link>
+          </SectionHeading>
+          {featured.length > 0 ? (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {featured.map((project) => (
+                <ProjectCard key={project.id} project={project} />
+              ))}
+            </div>
+          ) : (
+            <p className="font-mono text-sm text-muted">
+              no projects published yet. The workshop is open.
+            </p>
+          )}
         </div>
-      </main>
-    </div>
+      </section>
+
+      <section className="border-b border-line">
+        <div className="mx-auto w-full max-w-5xl px-5 py-20 sm:px-8">
+          <SectionHeading path="~/journal" title="Today I learned">
+            <Link
+              href="/journal"
+              className="font-mono text-sm text-moss-dark underline underline-offset-3 hover:text-moss"
+            >
+              read the journal →
+            </Link>
+          </SectionHeading>
+          <JournalList posts={posts} showExcerpt={false} />
+        </div>
+      </section>
+
+      {photos.length > 0 ? (
+        <section className="border-b border-line">
+          <div className="mx-auto w-full max-w-5xl px-5 py-20 sm:px-8">
+            <SectionHeading path="~/photos" title="Field notes">
+              <Link
+                href="/photos"
+                className="font-mono text-sm text-moss-dark underline underline-offset-3 hover:text-moss"
+              >
+                all photos →
+              </Link>
+            </SectionHeading>
+            <PhotoStrip photos={photos.slice(0, 6)} />
+          </div>
+        </section>
+      ) : null}
+
+      <section className="border-b border-line">
+        <div className="mx-auto grid w-full max-w-5xl gap-12 px-5 py-20 sm:px-8 lg:grid-cols-2">
+          <div>
+            <SectionHeading path="~/about" title="About me" />
+            <div className="space-y-4 leading-relaxed text-ink-soft">
+              <p>
+                I&apos;m a junior AI developer with a stubborn habit of
+                automating anything that happens twice. At work I build
+                AI-powered systems: agents, RAG pipelines, and the glue
+                between them. After hours I tinker, journal what I learn,
+                and occasionally go outside with a camera.
+              </p>
+              <p>
+                Right now I&apos;m going deeper into Go, system design, and
+                microservices, because the bigger the automation, the more
+                it needs to be built like a real system.
+              </p>
+            </div>
+            <ul className="mt-8 flex flex-wrap gap-2">
+              {stack.map((t) => (
+                <li
+                  key={t}
+                  className="rounded-full border border-line bg-paper-deep/60 px-3 py-1 font-mono text-sm text-ink-soft"
+                >
+                  {t}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <SectionHeading path="~/now" title="What I'm up to" />
+            <ul className="space-y-5">
+              <li className="flex gap-4">
+                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-moss" />
+                <p className="text-ink-soft">
+                  <span className="font-medium text-ink">Learning Go.</span>{" "}
+                  The portfolio you&apos;re looking at is built with it.
+                </p>
+              </li>
+              <li className="flex gap-4">
+                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-moss" />
+                <p className="text-ink-soft">
+                  <span className="font-medium text-ink">Building agents.</span>{" "}
+                  SQL agents, RAG chatbots, and n8n automations for small
+                  businesses.
+                </p>
+              </li>
+              <li className="flex gap-4">
+                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-moss" />
+                <p className="text-ink-soft">
+                  <span className="font-medium text-ink">Taking photos.</span>{" "}
+                  Whatever nature happens to be around.
+                </p>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="contact">
+        <div className="mx-auto w-full max-w-5xl px-5 py-20 sm:px-8">
+          <SectionHeading path="~/contact" title="Say hello" />
+          <div className="grid gap-10 lg:grid-cols-2">
+            <div>
+              <p className="leading-relaxed text-muted">
+                Have a project, a question, or just want to talk shop about
+                agents and automations? My inbox is open.
+              </p>
+              <p className="mt-6 font-mono text-sm">
+                <a
+                  href="https://github.com/IKH-TIAR"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-moss-dark underline underline-offset-3 hover:text-moss"
+                >
+                  github.com/IKH-TIAR
+                </a>
+              </p>
+            </div>
+            <ContactForm />
+          </div>
+        </div>
+      </section>
+    </>
   );
 }

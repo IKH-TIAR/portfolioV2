@@ -32,3 +32,6 @@ build/
 # Local agent tooling
 .agents/
 skills-lock.json
+
+# Local screenshots
+frontend/shot-*.png
