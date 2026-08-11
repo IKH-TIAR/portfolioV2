@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { Figtree, IBM_Plex_Mono, Instrument_Serif } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
 
 const instrument = Instrument_Serif({
   weight: "400",
@@ -47,9 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${instrument.variable} ${figtree.variable} ${plex.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <Header />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        {children}
       </body>
     </html>
   );

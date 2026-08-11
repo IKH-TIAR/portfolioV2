@@ -3,7 +3,10 @@ import type { Project } from "@/lib/api";
 
 export default function ProjectCard({ project }: { project: Project }) {
   return (
-    <article className="flex flex-col rounded-2xl border border-line bg-paper-deep/50 p-6 transition-colors hover:border-moss/40">
+    <Link
+      href={`/projects/${encodeURIComponent(project.slug)}`}
+      className="group flex h-full flex-col rounded-2xl border border-line bg-paper-deep/50 p-6 transition-colors hover:border-moss/40"
+    >
       {project.imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -53,14 +56,14 @@ export default function ProjectCard({ project }: { project: Project }) {
           </a>
         ) : null}
       </div>
-    </article>
+    </Link>
   );
 }
 
 export function ProjectLink({ project }: { project: Project }) {
   return (
     <Link
-      href={`/projects#${project.slug}`}
+      href={`/projects/${encodeURIComponent(project.slug)}`}
       className="group flex items-baseline justify-between gap-4 border-b border-line py-5 transition-colors hover:border-moss/40"
     >
       <div className="min-w-0">

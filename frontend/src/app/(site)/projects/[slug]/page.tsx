@@ -37,7 +37,13 @@ export default async function ProjectPage({ params }: { params: Promise<Params> 
   return (
     <article className="border-b border-line">
       <div className="mx-auto w-full max-w-5xl px-5 py-20 sm:px-8">
-        <p className="font-mono text-sm text-moss">~/projects/{project.slug}</p>
+        <Link
+          href="/projects"
+          className="inline-flex items-center gap-1 font-mono text-sm text-moss hover:text-ink"
+        >
+          ← Back to projects
+        </Link>
+        <p className="mt-4 font-mono text-sm text-moss">~/projects/{project.slug}</p>
         <h1 className="mt-4 font-serif text-4xl text-ink sm:text-5xl">{project.title}</h1>
         {project.tagline ? (
           <p className="mt-4 max-w-2xl text-xl text-ink-soft">{project.tagline}</p>

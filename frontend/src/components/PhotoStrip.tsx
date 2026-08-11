@@ -23,8 +23,14 @@ export default function PhotoStrip({ photos }: { photos: Photo[] }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   const close = useCallback(() => setOpenIndex(null), []);
-  const prev = useCallback(() => setOpenIndex((i) => (i === null ? null : (i - 1 + photos.length) % photos.length)), []);
-  const next = useCallback(() => setOpenIndex((i) => (i === null ? null : (i + 1) % photos.length)), []);
+  const prev = useCallback(
+    () => setOpenIndex((i) => (i === null ? null : (i - 1 + photos.length) % photos.length)),
+    [photos.length]
+  );
+  const next = useCallback(
+    () => setOpenIndex((i) => (i === null ? null : (i + 1) % photos.length)),
+    [photos.length]
+  );
 
   useEffect(() => {
     if (openIndex === null) return;

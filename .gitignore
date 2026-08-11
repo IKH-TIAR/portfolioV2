@@ -35,3 +35,6 @@ skills-lock.json
 
 # Local screenshots
 frontend/shot-*.png
+
+# Session logs
+session-*.md
