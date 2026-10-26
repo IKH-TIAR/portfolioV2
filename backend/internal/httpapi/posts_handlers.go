@@ -2,17 +2,19 @@ package httpapi
 
 import (
 	"errors"
+	"strings"
 	"net/http"
 
 	"github.com/ikhtiar/portfolio-backend/internal/store"
 )
 
 type postPayload struct {
-	Slug      string `json:"slug"`
-	Title     string `json:"title"`
-	Body      string `json:"body"`
-	PostType  string `json:"postType"`
-	Published bool   `json:"published"`
+	Slug      string   `json:"slug"`
+	Title     string   `json:"title"`
+	Body      string   `json:"body"`
+	PostType  string   `json:"postType"`
+	Tags      []string `json:"tags"`
+	Published bool     `json:"published"`
 }
 
 func (p *postPayload) validate() string {
@@ -31,6 +33,23 @@ func (p *postPayload) validate() string {
 	if p.PostType != "journal" && p.PostType != "note" {
 		return "postType must be 'journal' or 'note'"
 	}
+	seen := make(map[string]bool, len(p.Tags))
+	cleaned := p.Tags[:0]
+	for _, t := range p.Tags {
+		t = strings.ToLower(strings.TrimSpace(t))
+		if t == "" || seen[t] {
+			continue
+		}
+		if len(t) > 50 {
+			return "tags must be at most 50 chars each"
+		}
+		seen[t] = true
+		cleaned = append(cleaned, t)
+	}
+	p.Tags = cleaned
+	if len(p.Tags) > 10 {
+		return "at most 10 tags per post"
+	}
 	return ""
 }
 
@@ -40,6 +59,7 @@ func toPost(p postPayload) store.Post {
 		Title:     p.Title,
 		Body:      p.Body,
 		PostType:  p.PostType,
+		Tags:      p.Tags,
 		Published: p.Published,
 	}
 }
@@ -47,7 +67,7 @@ func toPost(p postPayload) store.Post {
 func (s *Server) handleListPosts(w http.ResponseWriter, r *http.Request) {
 	limit, offset := paginationFrom(r)
 	posts, err := s.store.ListPosts(r.Context(), store.PostQuery{
-		PublishedOnly: true, Limit: limit, Offset: offset,
+		PublishedOnly: true, Tag: r.URL.Query().Get("tag"), Limit: limit, Offset: offset,
 	})
 	if err != nil {
 		storeError(s.logger, w, err, "list posts")

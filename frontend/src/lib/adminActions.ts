@@ -133,6 +133,10 @@ function postPayload(f: FormData) {
     title: String(f.get("title") || "").trim(),
     body: String(f.get("body") || ""),
     postType: String(f.get("postType") || "journal"),
+    tags: String(f.get("tags") || "")
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean),
     published: f.get("published") === "on",
   };
 }
@@ -222,10 +226,13 @@ export async function uploadImage(formData: FormData): Promise<{ url?: string; e
 
 export async function uploadAndCreatePhoto(formData: FormData): Promise<{ error?: string; ok?: boolean }> {
   try {
-    const file = formData.get("file") as File | null;
-    if (!file) return { error: "No file selected" };
+    const files = formData.getAll("file") as File[];
+    const images = files.filter((f) => f.size > 0);
+    if (images.length === 0) return { error: "No file selected" };
+    if (images.length > 20) return { error: "At most 20 files per upload" };
+
     const body = new FormData();
-    body.append("file", file);
+    for (const f of images) body.append("file", f);
     const res = await fetch(`${API}/api/admin/uploads`, {
       method: "POST",
       headers: { Authorization: `Bearer ${await token()}` },
@@ -235,14 +242,22 @@ export async function uploadAndCreatePhoto(formData: FormData): Promise<{ error?
     if (!res.ok) {
       return { error: json?.error || `Upload failed (${res.status})` };
     }
-    const payload = {
-      url: json.url as string,
-      caption: String(formData.get("caption") || "").trim(),
-      location: String(formData.get("location") || "").trim(),
-      takenAt: String(formData.get("takenAt") || "").trim() || null,
-      published: formData.get("published") === "on",
-    };
-    await mutate("/api/admin/photos", "POST", payload);
+
+    const uploaded: { url: string }[] = Array.isArray(json?.urls) ? json.urls : [json];
+    const caption = String(formData.get("caption") || "").trim();
+    const location = String(formData.get("location") || "").trim();
+    const takenAt = String(formData.get("takenAt") || "").trim() || null;
+    const published = formData.get("published") === "on";
+
+    for (const item of uploaded) {
+      await mutate("/api/admin/photos", "POST", {
+        url: item.url,
+        caption,
+        location,
+        takenAt,
+        published,
+      });
+    }
     revalidatePath("/admin/photos");
     revalidatePath("/photos");
     return { ok: true };
@@ -252,6 +267,11 @@ export async function uploadAndCreatePhoto(formData: FormData): Promise<{ error?
 }
 
 export async function logout() {
-  (await cookies()).delete("admin_token");
+  (await cookies()).set("admin_token", "", {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/admin",
+    maxAge: 0,
+  });
   redirect("/admin/login");
 }

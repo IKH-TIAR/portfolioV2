@@ -18,7 +18,7 @@ type State = { error?: string; ok?: boolean };
 
 export default function PhotoManager({ photos }: { photos: Photo[] }) {
   const router = useRouter();
-  const [uploadState, uploadAction] = useActionState<State, FormData>(
+  const [uploadState, uploadAction, uploadPending] = useActionState<State, FormData>(
     (_, fd) => uploadAndCreatePhoto(fd),
     {}
   );
@@ -32,14 +32,19 @@ export default function PhotoManager({ photos }: { photos: Photo[] }) {
     <div className="mt-6 space-y-8">
       <form action={uploadAction} className="space-y-4 rounded-2xl border border-line bg-paper-deep/40 p-6">
         {uploadState.error ? <ErrorBox message={uploadState.error} /> : null}
-        <h2 className="font-serif text-xl text-ink">Upload a photo</h2>
+        <h2 className="font-serif text-xl text-ink">Upload photos</h2>
         <input
           type="file"
           name="file"
+          multiple
           required
           accept="image/jpeg,image/png,image/gif,image/webp,image/avif"
           className="mt-1 w-full text-sm text-ink-soft file:mr-3 file:rounded-full file:border-0 file:bg-moss file:px-4 file:py-2 file:text-sm file:text-paper"
         />
+        <p className="font-mono text-xs text-muted">
+          select one or more images (up to 20, 10MB each) — they share the
+          caption, location and date below
+        </p>
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
             <label className="font-mono text-xs uppercase tracking-wider text-muted">Caption</label>
@@ -61,9 +66,10 @@ export default function PhotoManager({ photos }: { photos: Photo[] }) {
           </label>
           <button
             type="submit"
-            className="rounded-full bg-moss px-5 py-2 font-mono text-sm text-paper hover:bg-moss-dark"
+            disabled={uploadPending}
+            className="rounded-full bg-moss px-5 py-2 font-mono text-sm text-paper hover:bg-moss-dark disabled:opacity-50"
           >
-            Upload photo
+            {uploadPending ? "Uploading…" : "Upload photos"}
           </button>
         </div>
       </form>

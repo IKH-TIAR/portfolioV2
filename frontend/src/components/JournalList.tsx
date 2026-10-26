@@ -38,6 +38,20 @@ export default function JournalList({
               {excerpt(post.body, 160)}
             </p>
           ) : null}
+          {post.tags && post.tags.length > 0 ? (
+            <ul className="mt-3 flex flex-wrap gap-2">
+              {post.tags.map((tag) => (
+                <li key={tag}>
+                  <Link
+                    href={`/journal?tag=${encodeURIComponent(tag)}`}
+                    className="rounded-full border border-line bg-paper-deep/60 px-2.5 py-0.5 font-mono text-xs text-muted transition-colors hover:bg-moss hover:text-paper"
+                  >
+                    {tag}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </li>
       ))}
     </ol>

@@ -8,6 +8,13 @@ export async function requireAuth(): Promise<{ token: string }> {
   if (!token) {
     redirect("/admin/login");
   }
+  const res = await fetch(`${API}/api/auth/me`, {
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    redirect("/admin/login");
+  }
   return { token };
 }
 
@@ -26,7 +33,12 @@ export async function login(email: string, password: string): Promise<string> {
 
 export async function logoutAction() {
   "use server";
-  (await cookies()).delete("admin_token");
+  (await cookies()).set("admin_token", "", {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/admin",
+    maxAge: 0,
+  });
 }
 
 export async function adminFetch<T>(path: string, init: RequestInit = {}): Promise<T> {

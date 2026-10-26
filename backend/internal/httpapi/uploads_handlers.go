@@ -3,7 +3,6 @@ package httpapi
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -32,47 +31,61 @@ func (s *Server) handleAdminUpload(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "file too large or invalid multipart form")
 		return
 	}
+	defer r.MultipartForm.RemoveAll()
 
-	file, header, err := r.FormFile("file")
-	if err != nil {
+	files := r.MultipartForm.File["file"]
+	if len(files) == 0 {
 		writeError(w, http.StatusBadRequest, "file field is required")
 		return
 	}
-	defer file.Close()
-
-	contentType := header.Header.Get("Content-Type")
-	ext, ok := allowedImageTypes[contentType]
-	if !ok {
-		writeError(w, http.StatusBadRequest, "only jpeg, png, gif, webp and avif images are allowed")
-		return
-	}
-
-	data, err := io.ReadAll(io.LimitReader(file, maxUploadBytes))
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "could not read file")
+	if len(files) > 20 {
+		writeError(w, http.StatusBadRequest, "at most 20 files per request")
 		return
 	}
 
 	now := time.Now()
-	objectPath := fmt.Sprintf("uploads/%04d/%02d/%s.%s", now.Year(), now.Month(), randomHex(16), ext)
-
-	url, err := s.uploader.Upload(r.Context(), objectPath, data, contentType)
-	if err != nil {
-		if errors.Is(err, io.ErrUnexpectedEOF) {
-			writeError(w, http.StatusBadRequest, "file too large")
+	results := make([]map[string]any, 0, len(files))
+	for _, header := range files {
+		file, err := header.Open()
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "could not read file")
 			return
 		}
-		s.logger.Error("upload image", "error", err)
-		writeError(w, http.StatusInternalServerError, "upload failed")
-		return
+		contentType := header.Header.Get("Content-Type")
+		ext, ok := allowedImageTypes[contentType]
+		if !ok {
+			file.Close()
+			writeError(w, http.StatusBadRequest, "only jpeg, png, gif, webp and avif images are allowed")
+			return
+		}
+
+		data, err := io.ReadAll(io.LimitReader(file, maxUploadBytes))
+		file.Close()
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "could not read file")
+			return
+		}
+
+		objectPath := fmt.Sprintf("uploads/%04d/%02d/%s.%s", now.Year(), now.Month(), randomHex(16), ext)
+		url, err := s.uploader.Upload(r.Context(), objectPath, data, contentType)
+		if err != nil {
+			s.logger.Error("upload image", "error", err)
+			writeError(w, http.StatusInternalServerError, "upload failed")
+			return
+		}
+		results = append(results, map[string]any{
+			"url":         url,
+			"contentType": contentType,
+			"size":        len(data),
+			"path":        objectPath,
+		})
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
-		"url":         url,
-		"contentType": contentType,
-		"size":        len(data),
-		"path":        objectPath,
-	})
+	if len(results) == 1 {
+		writeJSON(w, http.StatusOK, results[0])
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"urls": results})
 }
 
 func randomHex(n int) string {

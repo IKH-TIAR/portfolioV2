@@ -12,6 +12,7 @@ type Post = {
   title: string;
   body: string;
   postType: "journal" | "note";
+  tags: string[];
   published: boolean;
 };
 

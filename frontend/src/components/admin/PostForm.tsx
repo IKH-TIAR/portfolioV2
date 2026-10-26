@@ -11,6 +11,7 @@ type Props = {
     title: string;
     body: string;
     postType: "journal" | "note";
+    tags: string[];
     published: boolean;
   };
 };
@@ -76,6 +77,17 @@ export default function PostForm({ post }: Props) {
           rows={18}
           defaultValue={post?.body}
           className="mt-1 w-full rounded-xl border border-line bg-paper px-3 py-2 font-mono text-sm text-ink"
+        />
+      </div>
+      <div>
+        <label className="font-mono text-xs uppercase tracking-wider text-muted">
+          Tags (comma separated)
+        </label>
+        <input
+          name="tags"
+          defaultValue={post?.tags.join(", ") ?? ""}
+          placeholder="ai, backend, go, fun fact"
+          className="mt-1 w-full rounded-xl border border-line bg-paper px-3 py-2 text-ink"
         />
       </div>
       <label className="flex items-center gap-2 font-mono text-sm text-ink-soft">
